@@ -70,6 +70,9 @@ Host {proxy}
     HostName {proxy}
     User root
     Port 22
+    PreferredAuthentications publickey
+    PubkeyAuthentication yes
+    StrictHostKeyChecking no
 """
             f.write(proxy_config)
     

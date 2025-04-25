@@ -49,8 +49,38 @@ def create_tar_archive(source_dir, exclude_dirs):
     
     return temp_file.name
 
+def setup_ssh_config(proxy):
+    """设置SSH配置"""
+    # 创建或修改SSH配置文件
+    ssh_config_dir = os.path.expanduser("~/.ssh")
+    os.makedirs(ssh_config_dir, exist_ok=True)
+    
+    ssh_config_path = os.path.join(ssh_config_dir, "config")
+    
+    # 检查是否已经存在代理配置
+    with open(ssh_config_path, 'a+') as f:
+        f.seek(0)
+        content = f.read()
+        if f"Host {proxy}" not in content:
+            # 添加代理配置
+            proxy_config = f"""
+Host {proxy}
+    HostName {proxy}
+    User root
+    Port 22
+    PreferredAuthentications publickey
+    PubkeyAuthentication yes
+    StrictHostKeyChecking no
+"""
+            f.write(proxy_config)
+    
+    print(f"已设置SSH配置: {proxy}")
+
 def execute_scp_command(archive_path, proxy, remote, remote_path, dry_run=False):
     """执行scp命令"""
+    # 设置SSH配置
+    setup_ssh_config(proxy)
+    
     # 构建scp命令
     cmd = ['scp', '-o', f'ProxyJump={proxy}', archive_path, f'{remote}:{remote_path}']
     
@@ -64,10 +94,13 @@ def execute_scp_command(archive_path, proxy, remote, remote_path, dry_run=False)
         return result.returncode
     except subprocess.CalledProcessError as e:
         print(f"命令执行失败: {e}")
-        return e.returncode
+        return result.returncode
 
 def execute_remote_command(proxy, remote, remote_path, archive_name, dry_run=False):
     """在远程服务器上执行命令"""
+    # 设置SSH配置
+    setup_ssh_config(proxy)
+    
     # 构建SSH命令
     cmd = ['ssh', '-J', proxy, remote, f'cd {remote_path} && tar -xzf {archive_name}']
     
@@ -81,7 +114,7 @@ def execute_remote_command(proxy, remote, remote_path, archive_name, dry_run=Fal
         return result.returncode
     except subprocess.CalledProcessError as e:
         print(f"命令执行失败: {e}")
-        return e.returncode
+        return result.returncode
 
 def main():
     """主函数"""
